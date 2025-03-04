@@ -1,62 +1,56 @@
+# Digit Recognition
+Handwritten Digit Recognition using OpenCV, sklearn and Python | [Video](https://www.youtube.com/watch?v=ur6JY2Hl-MM)
 
-# Handwritten Digit Recognition
+**Check out the blog post [here](http://hanzratech.in/python/handwritten-digit-recognition-using-opencv-sklearn-and-python/) for complete notes on how the code works.**
 
-## Overview
-This project implements a Handwritten Digit Recognition system using OpenCV, Scikit-learn (sklearn), and Python. It includes a classifier-based approach and a CNN-based approach to recognize handwritten digits from images.
+# Dependencies
+1. `cv2`
+2. `sklearn`
+3. `skimage`
+4. `numpy`
+5. `collections`
 
-## Features
-- Preprocessing of handwritten digit images
-- Training and evaluation using a classifier (digits_cls.pkl)
-- CNN-based approach for improved accuracy
-- Visualization of predictions
-- User input for digit classification
+# Contents
+This repository contains the following files-
 
-## Technologies Used
-- Python
-- OpenCV
-- Scikit-learn (sklearn)
-- Scikit-image (skimage)
-- NumPy
-- TensorFlow/Keras
-- Matplotlib
+1. `generateClassifier.py` - Python Script to create the classifier file `digits_cls.pkl`.
+2. `performRecognition.py` - Python Script to test the classifier.
+3. `digits_cls.pkl` - Classifier file for digit recognition.
+4. `photo_1.jpg` - Test image number 1 to test the classifier
+5. `photo_2.jpg` - Test image numbre 2 to test the classifier
 
-## Dataset
-The project utilizes the [MNIST dataset](http://yann.lecun.com/exdb/mnist/), which contains 60,000 training images and 10,000 test images of handwritten digits.
+## Usage 
 
-## Dependencies
-Make sure you have the following dependencies installed:
-- OpenCV (`cv2`)
-- Scikit-learn (`sklearn`)
-- Scikit-image (`skimage`)
-- NumPy
-- Collections
+* Clone the repository - 
+```bash
+cd 
+git clone https://github.com/bikz05/digit-recognition.git
+cd digit-recognition
+```
+* The next step is to train the classifier. To do so run the script `generateClassifier.py`. It will produce the classifier named `digits_cls.pkl`. 
 
-## Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/Handwritten-Digit-Recognition.git
-   cd Handwritten-Digit-Recognition
-   ```
-
-
-## Model Architecture (CNN Approach)
-The CNN architecture includes:
-- Convolutional layers with ReLU activation
-- Max-pooling layers
-- Fully connected layers with softmax activation for classification
+**NOTE** - *I have already created the `digits_cls.pkl`, so this step is not necessary.*
+```python
+python generateClassifier.py
+```
+* To test the classifier, run the `performRecognition.py` script.
+```python
+python performRecognition.py -c <path to classifier file> -i <path to test image>
+```
+ex -
+```python
+python performRecognition.py -c digits_cls.pkl -i photo_1.jpg
+```
 
 ## Results
-The model achieves an accuracy of over **98%** on the MNIST test dataset. Below is a sample of correctly classified digits:
 
-![Sample Predictions](path/to/sample_predictions.png)
+### Sample Image 1
+![Result Number 1](http://hanzratech.in/figures/digit-reco-1-out.png)
+### Sample Image 2
+![Result Number 2](http://hanzratech.in/figures/digit-reco-2.png)
 
-## Future Improvements
-- Reject bounding boxes smaller than a certain area
-- Improve error handling for user inputs
-- Deploy as a web app using Flask or Streamlit
-- Real-time digit recognition from a webcam feed
+## TODO
 
-## Contributing
-Contributions are welcome! Feel free to open issues or submit pull requests.
-
-
+* Add a CNN Based approach
+* Reject bounding boxes lesser than some area
+* Look into user errors
