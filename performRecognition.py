@@ -1,56 +1,86 @@
-#!/usr/bin/python
+# performRecognition.py
 
-# Import the modules
+#!/usr/bin/env python3
+
+import argparse
 import cv2
-from sklearn.externals import joblib
-from skimage.feature import hog
+import joblib
 import numpy as np
-import argparse as ap
+from skimage.feature import hog
 
-# Get the path of the training set
-parser = ap.ArgumentParser()
-parser.add_argument("-c", "--classiferPath", help="Path to Classifier File", required="True")
-parser.add_argument("-i", "--image", help="Path to Image", required="True")
-args = vars(parser.parse_args())
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-c", "--classifierPath",
+        help="Path to classifier file (digits_cls.pkl)",
+        required=True
+    )
+    parser.add_argument(
+        "-i", "--image",
+        help="Path to input image",
+        required=True
+    )
+    args = parser.parse_args()
 
-# Load the classifier
-clf, pp = joblib.load(args["classiferPath"])
+    # Load trained model and scaler
+    clf, scaler = joblib.load(args.classifierPath)
 
-# Read the input image 
-im = cv2.imread(args["image"])
+    # Read and preprocess image
+    image = cv2.imread(args.image)
+    gray  = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur  = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh = cv2.threshold(blur, 90, 255, cv2.THRESH_BINARY_INV)
 
-# Convert to grayscale and apply Gaussian filtering
-im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-im_gray = cv2.GaussianBlur(im_gray, (5, 5), 0)
+    # Find contours (OpenCV ≥4 returns 2 values)
+    contours, _ = cv2.findContours(
+        thresh.copy(),
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
 
-# Threshold the image
-ret, im_th = cv2.threshold(im_gray, 90, 255, cv2.THRESH_BINARY_INV)
+    for ctr in contours:
+        x, y, w, h = cv2.boundingRect(ctr)
+        # Draw rectangle around digit
+        cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
-# Find contours in the image
-ctrs, hier = cv2.findContours(im_th.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Extract ROI, resize to 28x28
+        length = int(h * 1.6)
+        pt1 = max(0, y + h//2 - length//2)
+        pt2 = max(0, x + w//2 - length//2)
+        roi = thresh[pt1:pt1+length, pt2:pt2+length]
+        roi = cv2.resize(roi, (28, 28), interpolation=cv2.INTER_AREA)
 
-# Get rectangles contains each contour
-rects = [cv2.boundingRect(ctr) for ctr in ctrs]
+        # Dilate to close gaps (3×3 kernel)
+        kernel = np.ones((3, 3), np.uint8)
+        roi = cv2.dilate(roi, kernel, iterations=1)
 
-# For each rectangular region, calculate HOG features and predict
-# the digit using Linear SVM.
-for rect in rects:
-    # Draw the rectangles
-    cv2.rectangle(im, (rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3]), (0, 255, 0), 3) 
-    # Make the rectangular region around the digit
-    leng = int(rect[3] * 1.6)
-    pt1 = int(rect[1] + rect[3] // 2 - leng // 2)
-    pt2 = int(rect[0] + rect[2] // 2 - leng // 2)
-    roi = im_th[pt1:pt1+leng, pt2:pt2+leng]
-    # Resize the image
-    roi = cv2.resize(roi, (28, 28), interpolation=cv2.INTER_AREA)
-    roi = cv2.dilate(roi, (3, 3))
-    # Calculate the HOG features
-    roi_hog_fd = hog(roi, orientations=9, pixels_per_cell=(14, 14), cells_per_block=(1, 1), visualise=False)
-    roi_hog_fd = pp.transform(np.array([roi_hog_fd], 'float64'))
-    nbr = clf.predict(roi_hog_fd)
-    cv2.putText(im, str(int(nbr[0])), (rect[0], rect[1]),cv2.FONT_HERSHEY_DUPLEX, 2, (0, 255, 255), 3)
+        # Compute HOG descriptor
+        fd = hog(
+            roi,
+            orientations=9,
+            pixels_per_cell=(14, 14),
+            cells_per_block=(1, 1),
+            visualize=False
+        )
+        fd_scaled = scaler.transform([fd])
 
-cv2.namedWindow("Resulting Image with Rectangular ROIs", cv2.WINDOW_NORMAL)
-cv2.imshow("Resulting Image with Rectangular ROIs", im)
-cv2.waitKey()
+        # Predict and annotate
+        nbr = clf.predict(fd_scaled)[0]
+        cv2.putText(
+            image,
+            str(int(nbr)),
+            (x, y - 5),
+            cv2.FONT_HERSHEY_DUPLEX,
+            1.5,
+            (0, 255, 255),
+            2
+        )
+
+    # Display result
+    cv2.namedWindow("Result", cv2.WINDOW_NORMAL)
+    cv2.imshow("Result", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()

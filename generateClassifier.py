@@ -1,39 +1,47 @@
-#!/usr/bin/python
+# generateClassifier.py
 
-# Import the modules
-from sklearn.externals import joblib
-from sklearn import datasets
-from skimage.feature import hog
-from sklearn.svm import LinearSVC
-from sklearn import preprocessing
+#!/usr/bin/env python3
+
+import joblib
 import numpy as np
 from collections import Counter
+from skimage.feature import hog
+from sklearn.datasets import fetch_openml
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import LinearSVC
 
-# Load the dataset
-dataset = datasets.fetch_mldata("MNIST Original")
+def main():
+    # Load MNIST from OpenML
+    dataset = fetch_openml('mnist_784', version=1)
+    features = np.array(dataset.data, dtype='int16')
+    labels   = np.array(dataset.target, dtype='int')
 
-# Extract the features and labels
-features = np.array(dataset.data, 'int16') 
-labels = np.array(dataset.target, 'int')
+    # Extract HOG features for each image
+    list_hog_fd = []
+    for img in features:
+        fd = hog(
+            img.reshape((28, 28)),
+            orientations=9,
+            pixels_per_cell=(14, 14),
+            cells_per_block=(1, 1),
+            visualize=False
+        )
+        list_hog_fd.append(fd)
+    hog_features = np.array(list_hog_fd, dtype='float64')
 
-# Extract the hog features
-list_hog_fd = []
-for feature in features:
-    fd = hog(feature.reshape((28, 28)), orientations=9, pixels_per_cell=(14, 14), cells_per_block=(1, 1), visualise=False)
-    list_hog_fd.append(fd)
-hog_features = np.array(list_hog_fd, 'float64')
+    # Standardize features
+    scaler = StandardScaler().fit(hog_features)
+    hog_features = scaler.transform(hog_features)
 
-# Normalize the features
-pp = preprocessing.StandardScaler().fit(hog_features)
-hog_features = pp.transform(hog_features)
+    print("Count of digits in dataset:", Counter(labels))
 
-print "Count of digits in dataset", Counter(labels)
+    # Train linear SVM
+    clf = LinearSVC(max_iter=10000)
+    clf.fit(hog_features, labels)
 
-# Create an linear SVM object
-clf = LinearSVC()
+    # Save classifier + scaler
+    joblib.dump((clf, scaler), "digits_cls.pkl", compress=3)
+    print("Saved trained model to digits_cls.pkl")
 
-# Perform the training
-clf.fit(hog_features, labels)
-
-# Save the classifier
-joblib.dump((clf, pp), "digits_cls.pkl", compress=3)
+if __name__ == "__main__":
+    main()
